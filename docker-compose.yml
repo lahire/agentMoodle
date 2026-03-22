@@ -1,0 +1,65 @@
+services:
+  # 1. PostgreSQL Database (Shared for Moodle and our Agent Analytics)
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: moodleuser
+      POSTGRES_PASSWORD: moodlepassword
+      POSTGRES_DB: moodledb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # 2. Moodle Test Environment
+# 2. Moodle Test Environment
+  moodle:
+    image: bitnamilegacy/moodle:4.3 # Using a stable tag from the legacy repo
+    environment:
+      MOODLE_DATABASE_TYPE: pgsql   # Explicitly tell it we are using Postgres
+      MOODLE_DATABASE_HOST: db
+      MOODLE_DATABASE_USER: moodleuser
+      MOODLE_DATABASE_PASSWORD: moodlepassword
+      MOODLE_DATABASE_NAME: moodledb
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    depends_on:
+      - db
+  # 3. Local LLM Server (Ollama)
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # 4. Our Python Agent API
+  agent-api:
+    build: ./api
+    platform: linux/arm64
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://moodleuser:moodlepassword@db:5432/moodledb
+      - OLLAMA_HOST=http://ollama:11434
+      - ANONYMIZED_TELEMETRY=False
+    depends_on:
+      - db
+      - ollama
+    volumes:
+      - ./api:/app
+      - ./data:/data
+    # ADD THIS LINE:
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  adminer:
+    image: adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      - db
+
+
+volumes:
+  db_data:
+  ollama_data:
