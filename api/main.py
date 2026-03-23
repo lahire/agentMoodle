@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy.orm import Session
-
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_community.llms import Ollama
@@ -17,7 +17,13 @@ from database import init_db, get_db, SessionLocal, UserInteraction
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = FastAPI(title="Math Tutor Agent API", version="1.0")
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, change this to ["http://localhost:8080"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # --- Configuration ---
 CHROMA_DB_DIR = "/data/chroma"
 # Note: Keeping the "-base" model we discussed to prevent Apple Silicon crashes

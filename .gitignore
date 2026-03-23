@@ -3,6 +3,7 @@ __pycache__/
 *.py[codz]
 *$py.class
 data/corpus/*
+data/chroma/*
 # C extensions
 *.so
 

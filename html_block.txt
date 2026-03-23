@@ -1,0 +1,114 @@
+<style>
+  #ai-chat-btn { position: fixed; bottom: 20px; right: 20px; background-color: #0f6cbf; color: white; border: none; border-radius: 50%; width: 60px; height: 60px; font-size: 24px; cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 9999; }
+  #ai-chat-window { display: none; position: fixed; bottom: 90px; right: 20px; width: 350px; height: 500px; background: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); z-index: 9999; flex-direction: column; overflow: hidden; border: 1px solid #ccc; }
+  #ai-chat-header { background: #0f6cbf; color: white; padding: 15px; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+  #ai-chat-controls { background: #f8f9fa; padding: 10px; border-bottom: 1px solid #ddd; font-size: 12px; }
+  #ai-chat-controls select { width: 100%; padding: 5px; margin-top: 5px; }
+  #ai-chat-messages { flex-grow: 1; padding: 15px; overflow-y: auto; background: #f4f4f9; display: flex; flex-direction: column; gap: 10px; }
+  .chat-msg { padding: 10px; border-radius: 8px; max-width: 85%; font-size: 14px; line-height: 1.4; }
+  .msg-user { background: #0f6cbf; color: white; align-self: flex-end; border-bottom-right-radius: 0; }
+  .msg-bot { background: #e9ecef; color: black; align-self: flex-start; border-bottom-left-radius: 0; }
+  .msg-loading { color: #888; font-style: italic; font-size: 12px; align-self: flex-start;}
+  #ai-chat-input-area { display: flex; padding: 10px; border-top: 1px solid #ddd; background: white; }
+  #ai-chat-input { flex-grow: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; outline: none; }
+  #ai-chat-send { background: #0f6cbf; color: white; border: none; padding: 0 15px; margin-left: 5px; border-radius: 5px; cursor: pointer; }
+</style>
+
+<button id="ai-chat-btn">💬</button>
+<div id="ai-chat-window">
+  <div id="ai-chat-header">
+    <span>Socratic Math Tutor</span>
+    <button id="ai-chat-close" style="background:none; border:none; color:white; font-size:16px; cursor:pointer;">✖</button>
+  </div>
+  <div id="ai-chat-controls">
+    <label for="ai-confidence">Tu nivel de confianza actual:</label>
+    <select id="ai-confidence">
+      <option value="principiante">Principiante (Necesito paso a paso)</option>
+      <option value="avanzado">Avanzado (Solo guíame)</option>
+    </select>
+  </div>
+  <div id="ai-chat-messages">
+    <div class="chat-msg msg-bot">¡Hola! Soy tu tutor de matemáticas. ¿En qué te puedo ayudar hoy?</div>
+  </div>
+  <div id="ai-chat-input-area">
+    <input type="text" id="ai-chat-input" placeholder="Escribe tu pregunta de matemáticas..." />
+    <button id="ai-chat-send">Enviar</button>
+  </div>
+</div>
+
+<script>
+  // Generate a random session ID for this browser tab so the bot remembers the context
+  const sessionId = "sess_" + Math.random().toString(36).substring(2, 10);
+  // Ideally, grab the real Moodle user ID, but we'll use a random hash for testing
+  const userHash = "moodle_user_" + Math.floor(Math.random() * 10000); 
+
+  const btnOpen = document.getElementById('ai-chat-btn');
+  const btnClose = document.getElementById('ai-chat-close');
+  const chatWindow = document.getElementById('ai-chat-window');
+  const btnSend = document.getElementById('ai-chat-send');
+  const inputField = document.getElementById('ai-chat-input');
+  const messagesBox = document.getElementById('ai-chat-messages');
+  const confidenceSelect = document.getElementById('ai-confidence');
+
+  // Toggle Window
+  btnOpen.addEventListener('click', () => {
+    chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
+  });
+  btnClose.addEventListener('click', () => chatWindow.style.display = 'none');
+
+  // Append Message Helper
+  function addMessage(text, sender) {
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('chat-msg', sender === 'user' ? 'msg-user' : 'msg-bot');
+    msgDiv.innerText = text;
+    messagesBox.appendChild(msgDiv);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+  }
+
+  // Send Message Logic
+  async function sendMessage() {
+    const question = inputField.value.trim();
+    if (!question) return;
+
+    const confidence = confidenceSelect.value;
+    inputField.value = '';
+    
+    // Add user message to UI
+    addMessage(question, 'user');
+
+    // Add Loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.classList.add('chat-msg', 'msg-loading');
+    loadingDiv.innerText = "Pensando...";
+    messagesBox.appendChild(loadingDiv);
+    messagesBox.scrollTop = messagesBox.scrollHeight;
+
+    try {
+      const response = await fetch("http://localhost:8000/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_hash: userHash,
+          session_id: sessionId,
+          question: question,
+          confidence_level: confidence
+        })
+      });
+
+      const data = await response.json();
+      messagesBox.removeChild(loadingDiv); // Remove loading
+      addMessage(data.answer, 'bot');      // Add AI answer
+
+    } catch (error) {
+      messagesBox.removeChild(loadingDiv);
+      addMessage("Error de conexión con el servidor. Por favor, intenta de nuevo.", 'bot');
+      console.error(error);
+    }
+  }
+
+  // Event Listeners for sending
+  btnSend.addEventListener('click', sendMessage);
+  inputField.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+</script>

@@ -17,7 +17,9 @@ services:
     image: bitnamilegacy/moodle:4.3 # Using a stable tag from the legacy repo
     environment:
       MOODLE_DATABASE_TYPE: pgsql   # Explicitly tell it we are using Postgres
+      BITNAMI_DEBUG: true
       MOODLE_DATABASE_HOST: db
+      MOODLE_DATABASE_PORT_NUMBER: 5432
       MOODLE_DATABASE_USER: moodleuser
       MOODLE_DATABASE_PASSWORD: moodlepassword
       MOODLE_DATABASE_NAME: moodledb
@@ -33,6 +35,15 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+
+  ollama-init:
+    image: ollama/ollama
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_HOST=ollama:11434
+    command: pull llama3
+
 
   # 4. Our Python Agent API
   agent-api:
